@@ -9,10 +9,12 @@
 - 模板容器 `hive<T>`，实现位于单个头文件 [`hive.hpp`](hive.hpp)。
 - 每个块固定容纳 64 个对象槽位，并通过双向链表连接多个块。
 - 使用 placement new 就地构造对象：`emplace(args...)`。
+- 支持复制构造、复制赋值、移动构造和移动赋值；移动后源容器为空且可继续使用。
+- 提供 `insert(const T&)`、`insert(T&&)`，分别支持复制插入和移动插入。
 - 支持 `erase(iterator)`：销毁指定元素、合并相邻空洞，并返回下一个存活元素的迭代器或 `end()`。
 - 提供 `size()`、`empty()`、`begin()`、`end()`，以及可前后遍历空洞和空块的双向 `iterator`。
 - 容器和块销毁时会析构所有仍存活的元素并释放块内存；块分配使用 `alignof(T)`，支持过对齐元素类型。
-- 提供 CTest 边界/skipfield 测试及 AddressSanitizer、UndefinedBehaviorSanitizer 覆盖脚本。
+- 提供 CTest 边界、生命周期、擦除/skipfield、复制/移动测试及 AddressSanitizer、UndefinedBehaviorSanitizer 覆盖脚本。
 - [`main.cpp`](main.cpp) 是最小可运行示例。
 
 ## 构建与运行
@@ -41,7 +43,7 @@ cmake --build build-tests --parallel
 ctest --test-dir build-tests --output-on-failure
 ```
 
-测试覆盖块边界插入、非平凡对象生命周期、空洞合并、跨空洞及空块的正反向遍历，以及 `erase` 的返回迭代器行为。
+测试覆盖块边界插入、非平凡对象生命周期、空洞合并、跨空洞及空块的正反向遍历、`erase` 的返回迭代器行为，以及复制/移动后的值、空洞、资源所有权和生命周期。
 
 在支持 GCC 或兼容 Sanitizer 选项的编译器环境中，可运行：
 
@@ -70,8 +72,8 @@ for (int value : values) {
 
 ## 当前限制
 
-- `hive` 显式禁止复制构造和复制赋值，也没有移动语义。
-- 尚未实现 `clear`、`const_iterator`、分配器支持或完整的标准容器接口。
+- 复制操作要求 `T` 可复制构造；移动操作按块转移存储，不移动单个元素。
+- 尚未实现 `const_iterator`、分配器支持或完整的标准容器接口；当前提供的 `clear()` 用于清空全部元素和块。
 - 未定义迭代器失效规则；对 `end()`、空迭代器或不属于该容器/不指向存活元素的迭代器调用 `erase` 均不受支持。
 - 尚未提供异常安全保证；若元素构造或内存分配抛出异常，容器状态不应被假定为满足标准容器的异常保证。
 

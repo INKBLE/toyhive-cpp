@@ -132,8 +132,51 @@ private:
 
 public:
     hive() = default;
-    hive(const hive&) = delete;
-    hive& operator=(const hive&) = delete;
+
+    hive(const hive& other)
+    {
+        // const_iterator 尚未作为公开 API 提供；复制只读访问源容器。
+        hive& source = const_cast<hive&>(other);
+        for(auto it = source.begin(); it != source.end(); ++it)
+        {
+            emplace(*it);
+        }
+    }
+
+    hive& operator=(const hive& other)
+    {
+        if(this != &other)
+        {
+            hive temp(other);
+            swap(temp);
+        }
+        return *this;
+    }
+
+    void swap(hive& other) noexcept
+    {
+        std::swap(head_block_, other.head_block_);
+        std::swap(tail_block_, other.tail_block_);
+        std::swap(size_, other.size_);
+    }
+
+    hive(hive&& other) noexcept :
+        size_(std::exchange(other.size_, 0)),
+        head_block_(std::exchange(other.head_block_, nullptr)),
+        tail_block_(std::exchange(other.tail_block_, nullptr)) {}
+
+    hive& operator=(hive&& other) noexcept
+    {
+        if(this != &other)
+        {
+            clear();
+            size_ = std::exchange(other.size_, 0);
+            head_block_ = std::exchange(other.head_block_, nullptr);
+            tail_block_ = std::exchange(other.tail_block_, nullptr);
+        }
+        return *this;
+    }
+
     ~hive()
     {
         clear();
@@ -322,6 +365,15 @@ public:
         curr->emplace_at(idx, std::forward<Args>(args)...);
         ++size_;
         return iterator(curr, idx);
+    }
+    iterator insert(const T& value)
+    {
+        return emplace(value);
+    }
+
+    iterator insert(T&& value)
+    {
+        return emplace(std::move(value));
     }
 
     iterator erase(iterator it)
