@@ -135,9 +135,7 @@ public:
 
     hive(const hive& other)
     {
-        // const_iterator 尚未作为公开 API 提供；复制只读访问源容器。
-        hive& source = const_cast<hive&>(other);
-        for(auto it = source.begin(); it != source.end(); ++it)
+        for(auto it = other.begin(); it != other.end(); ++it)
         {
             emplace(*it);
         }
@@ -199,7 +197,8 @@ public:
 
     [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
-    class iterator {
+    class iterator
+    {
         friend class hive;
 
     public:
@@ -233,7 +232,7 @@ public:
             advance_to_next();
             return *this;
         }
-        iterator  operator++(int) noexcept   // 后置 ++
+        iterator operator++(int) noexcept   // 后置 ++
         {
             iterator temp = *this;
             ++(*this);
@@ -245,7 +244,7 @@ public:
             retreat_to_prev();
             return *this;
         }
-        iterator  operator--(int) noexcept    // 后置 --
+        iterator operator--(int) noexcept    // 后置 --
         {
             iterator temp = *this;
             --(*this);
@@ -321,6 +320,79 @@ public:
                 index_ = BLOCK_CAPACITY - 1;
             }
         }
+    };
+
+    class const_iterator
+    {
+        friend class hive;
+
+    public:
+
+        // 标准迭代器特征类型别名
+        using value_type        = T;
+        using reference         = const T&;
+        using pointer           = const T*;
+        using difference_type   = std::ptrdiff_t;
+        using iterator_category = std::bidirectional_iterator_tag;
+
+
+        // 构造函数
+        const_iterator() noexcept = default;
+
+        const_iterator(const iterator& it) noexcept : it_(it) {}
+
+        const_iterator(block* b, size_t index) noexcept : it_(b, index) {}
+
+        // 访问操作符
+        [[nodiscard]] reference operator*() const noexcept
+        {
+            return static_cast<const T&>(*it_);
+        }
+
+        [[nodiscard]] pointer operator->() const noexcept
+        {
+            return static_cast<const T*>(it_.operator->());
+        }
+
+        // 移动操作符
+        const_iterator& operator++() noexcept     // 前置 ++
+        {
+            ++it_;
+            return *this;
+        }
+
+        const_iterator  operator++(int) noexcept   // 后置 ++
+        {
+            const_iterator temp = static_cast<const_iterator>(it_);
+            ++it_;
+            return temp;
+        }
+
+        const_iterator& operator--() noexcept       // 前置 --
+        {
+            --it_;
+            return *this;
+        }
+
+        const_iterator  operator--(int) noexcept    // 后置 --
+        {
+            const_iterator temp = static_cast<const_iterator>(it_);
+            --it_;
+            return temp;
+        }
+
+        // 比较操作符
+        [[nodiscard]] bool operator==(const const_iterator& other) const noexcept
+        {
+            return it_ == other.it_;
+        }
+        [[nodiscard]] bool operator!=(const const_iterator& other) const noexcept
+        {
+            return it_ != other.it_;
+        }
+
+    private:
+        iterator it_;
     };
 
 public:
@@ -422,6 +494,40 @@ public:
         return iterator(next_blk, first_valid);
     }
 
+    [[nodiscard]] const_iterator begin() const noexcept
+    {
+        return cbegin();
+    }
+
+    [[nodiscard]] const_iterator end() const noexcept
+    {
+        return cend();
+    }
+
+    [[nodiscard]] const_iterator cbegin() const noexcept
+    {
+        if (head_block_ == nullptr) { return cend(); }
+
+        iterator it(head_block_, 0);
+        if (head_block_->skipfield[0] > 0) {
+            it.index_ = head_block_->skipfield[0];
+            if (it.index_ >= BLOCK_CAPACITY)
+            {
+                it.advance_to_next();
+            }
+        }
+        return static_cast<const_iterator>(it);
+    }
+
+    [[nodiscard]] const_iterator cend() const noexcept
+    {
+        if (tail_block_ == nullptr)
+        {
+            return const_iterator(nullptr, 0);
+        }
+        return const_iterator(tail_block_, BLOCK_CAPACITY);
+    }
+
     struct slot_location
     {
         block* blk{nullptr};
@@ -433,6 +539,6 @@ public:
         block* curr = head_block_;
         while(curr != nullptr && curr->active_count == BLOCK_CAPACITY) curr = curr->next;
         if(curr == nullptr) { return {nullptr, 0}; }
-        return {curr, curr->first_free_idx};
+        return { curr, curr->first_free_idx };
     }
 };
