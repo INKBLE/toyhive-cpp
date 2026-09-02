@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cassert>
 #include <utility>
+#include <memory>
 
 template <typename T>
 class hive
@@ -135,10 +136,14 @@ public:
 
     hive(const hive& other)
     {
+        hive temp;
+
         for(auto it = other.begin(); it != other.end(); ++it)
         {
-            emplace(*it);
+            temp.emplace(*it);
         }
+
+        swap(temp);
     }
 
     hive& operator=(const hive& other)
@@ -427,17 +432,23 @@ public:
         auto [curr, idx] = find_slot_location();
         if(curr == nullptr)
         {
-            block* new_block_ = new block(tail_block_, nullptr);
-            if(tail_block_ != nullptr) { tail_block_->next = new_block_; }
-            else { head_block_ = new_block_; }
-            tail_block_ = new_block_;
-            curr = new_block_;
+            auto new_block_ = std::make_unique<block>(tail_block_, nullptr);
+            new_block_->emplace_at(0, std::forward<Args>(args)...);
+            curr = new_block_.release();
             idx = 0;
+            if(tail_block_ != nullptr) { tail_block_->next = curr; }
+            else { head_block_ = curr; }
+            tail_block_ = curr;
         }
-        curr->emplace_at(idx, std::forward<Args>(args)...);
+        else
+        {
+            curr->emplace_at(idx, std::forward<Args>(args)...);
+        }
+
         ++size_;
         return iterator(curr, idx);
     }
+
     iterator insert(const T& value)
     {
         return emplace(value);

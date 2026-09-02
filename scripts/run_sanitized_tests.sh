@@ -14,6 +14,7 @@ cmake --build "${build_dir}" --parallel
 readonly test_binary="${build_dir}/toyhive_boundary_tests"
 readonly erase_test_binary="${build_dir}/toyhive_erase_skipfield_tests"
 readonly copy_move_test_binary="${build_dir}/toyhive_copy_move_tests"
+readonly exception_safety_test_binary="${build_dir}/toyhive_exception_safety_tests"
 status=0
 for test_name in \
     empty_container \
@@ -23,6 +24,19 @@ for test_name in \
     if ! ASAN_OPTIONS="detect_leaks=1:halt_on_error=0" \
         UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
         "${test_binary}" "${test_name}"; then
+        status=1
+    fi
+done
+
+for test_name in \
+    emplace_failure_in_existing_block_preserves_state \
+    emplace_failure_in_new_block_preserves_state \
+    copy_constructor_failure_releases_partial_copy \
+    copy_assignment_failure_preserves_target; do
+    echo "=== ${test_name} ==="
+    if ! ASAN_OPTIONS="detect_leaks=1:halt_on_error=0" \
+        UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
+        "${exception_safety_test_binary}" "${test_name}"; then
         status=1
     fi
 done
