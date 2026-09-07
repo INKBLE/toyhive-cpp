@@ -6,19 +6,23 @@
 #include <stdexcept>
 #include <string_view>
 
-namespace {
+namespace
+{
 
-class test_failure final : public std::runtime_error {
-public:
+class test_failure final : public std::runtime_error
+{
+  public:
     explicit test_failure(const char* message) : std::runtime_error(message) {}
 };
 
-#define CHECK(condition)                                                                         \
-    do {                                                                                         \
-        if (!(condition)) {                                                                      \
-            throw test_failure("CHECK failed: " #condition " (" __FILE__ ":"                 \
-                               TOYHIVE_STRINGIFY(__LINE__) ")");                              \
-        }                                                                                        \
+#define CHECK(condition)                                                       \
+    do                                                                         \
+    {                                                                          \
+        if (!(condition))                                                      \
+        {                                                                      \
+            throw test_failure("CHECK failed: " #condition " (" __FILE__       \
+                               ":" TOYHIVE_STRINGIFY(__LINE__) ")");           \
+        }                                                                      \
     } while (false)
 
 #define TOYHIVE_STRINGIFY_IMPL(value) #value
@@ -33,10 +37,12 @@ void empty_container()
 
 void insertion_boundaries_and_size()
 {
-    for (const int count : {1, 63, 64, 65, 127, 128, 129, 192, 193}) {
+    for (const int count : {1, 63, 64, 65, 127, 128, 129, 192, 193})
+    {
         hive<int> values;
 
-        for (int value = 0; value < count; ++value) {
+        for (int value = 0; value < count; ++value)
+        {
             const auto inserted = values.emplace(value);
             CHECK(*inserted == value);
             CHECK(values.size() == static_cast<hive<int>::size_t>(value + 1));
@@ -45,7 +51,8 @@ void insertion_boundaries_and_size()
     }
 }
 
-struct tracked {
+struct tracked
+{
     static int live_count;
     static int construction_count;
     static int destruction_count;
@@ -83,7 +90,8 @@ void non_trivial_object_lifetime()
 
     {
         hive<tracked> values;
-        for (int value = 0; value < 65; ++value) {
+        for (int value = 0; value < 65; ++value)
+        {
             values.emplace(value);
         }
         CHECK(tracked::live_count == 65);
@@ -95,7 +103,8 @@ void non_trivial_object_lifetime()
     CHECK(tracked::construction_count == tracked::destruction_count);
 }
 
-struct test_case {
+struct test_case
+{
     std::string_view name;
     void (*run)();
 };
@@ -112,26 +121,31 @@ int main(int argc, char* argv[])
 {
     bool success = true;
 
-    for (const test_case& test : tests) {
-        if (argc == 2 && test.name != argv[1]) {
-            continue;
-        }
+    for (const test_case& test : tests)
+    {
+        if (argc == 2 && test.name != argv[1]) { continue; }
 
-        try {
+        try
+        {
             test.run();
             std::cout << "[PASS] " << test.name << '\n';
-        } catch (const std::exception& error) {
+        }
+        catch (const std::exception& error)
+        {
             success = false;
             std::cerr << "[FAIL] " << test.name << ": " << error.what() << '\n';
         }
     }
 
-    if (argc == 2) {
+    if (argc == 2)
+    {
         bool found = false;
-        for (const test_case& test : tests) {
+        for (const test_case& test : tests)
+        {
             found = found || test.name == argv[1];
         }
-        if (!found) {
+        if (!found)
+        {
             std::cerr << "Unknown test: " << argv[1] << '\n';
             return EXIT_FAILURE;
         }

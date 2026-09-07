@@ -172,6 +172,70 @@ void erase_entire_middle_block_and_cross_it()
     CHECK(*it == 63);
 }
 
+void erase_range_within_block()
+{
+    hive<int> values;
+    for (int value = 0; value < 10; ++value) {
+        values.emplace(value);
+    }
+
+    auto first = find_value(values, 3);
+    auto last = find_value(values, 7);
+    const auto returned = values.erase(first, last);
+
+    CHECK(returned != values.end());
+    CHECK(*returned == 7);
+    check_state(values, {0, 1, 2, 7, 8, 9});
+}
+
+void erase_range_across_blocks_and_existing_holes()
+{
+    hive<int> values;
+    for (int value = 0; value < 130; ++value) {
+        values.emplace(value);
+    }
+
+    values.erase(find_value(values, 63));
+    values.erase(find_value(values, 65));
+
+    auto first = find_value(values, 60);
+    auto last = find_value(values, 70);
+    const auto returned = values.erase(first, last);
+
+    CHECK(returned != values.end());
+    CHECK(*returned == 70);
+
+    std::vector<int> expected;
+    for (int value = 0; value < 130; ++value) {
+        if (value < 60 || value >= 70) {
+            expected.push_back(value);
+        }
+    }
+    check_state(values, expected);
+}
+
+void erase_range_to_end_and_empty_range()
+{
+    hive<int> values;
+    for (int value = 0; value < 130; ++value) {
+        values.emplace(value);
+    }
+
+    auto first = find_value(values, 64);
+    const auto returned = values.erase(first, values.end());
+    CHECK(returned == values.end());
+
+    std::vector<int> expected;
+    for (int value = 0; value < 64; ++value) {
+        expected.push_back(value);
+    }
+    check_state(values, expected);
+
+    const auto unchanged = values.erase(values.begin(), values.begin());
+    CHECK(unchanged == values.begin());
+    check_state(values, expected);
+}
+
 struct test_case {
     std::string_view name;
     void (*run)();
@@ -184,6 +248,9 @@ constexpr test_case tests[] = {
     {"bidirectional_hole_merge", bidirectional_hole_merge},
     {"alternating_holes_bidirectional_iteration", alternating_holes_bidirectional_iteration},
     {"erase_entire_middle_block_and_cross_it", erase_entire_middle_block_and_cross_it},
+    {"erase_range_within_block", erase_range_within_block},
+    {"erase_range_across_blocks_and_existing_holes", erase_range_across_blocks_and_existing_holes},
+    {"erase_range_to_end_and_empty_range", erase_range_to_end_and_empty_range},
 };
 
 } // namespace

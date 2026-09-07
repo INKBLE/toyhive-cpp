@@ -1,37 +1,38 @@
 #pragma once
-#include <cstddef>
-#include <new>
-#include <iterator>
-#include <sys/types.h>
-#include <cstdint>
 #include <cassert>
-#include <utility>
+#include <cstddef>
+#include <cstdint>
+#include <iterator>
 #include <memory>
+#include <new>
+#include <utility>
 
 template <typename T>
 class hive
 {
+  public:
+    using size_type = std::size_t;
+    using size_t = size_type;
 
-public:
-    using size_t = std::size_t;
-
-private:
-    static constexpr size_t BLOCK_CAPACITY = 64;
+  private:
+    static constexpr size_type BLOCK_CAPACITY = 64;
     using skip_t = std::uint8_t;
-    size_t size_{0};
+    size_type size_{0};
 
     struct block
     {
         block* prev{nullptr};
         block* next{nullptr};
         T* data{nullptr};
-        size_t active_count{0}; //记录元素数量
-        skip_t first_free_idx{0}; // 记录当前块内已知的第一个可用空洞起点
+        size_type active_count{0}; // 记录元素数量
+        skip_t first_free_idx{0};  // 记录当前块内已知的第一个可用空洞起点
         skip_t skipfield[BLOCK_CAPACITY]{0};
 
-        explicit block(block* prev = nullptr, block* next = nullptr) : prev(prev), next(next), active_count(0)
+        explicit block(block* prev = nullptr, block* next = nullptr)
+            : prev(prev), next(next), active_count(0)
         {
-            data = static_cast<T*>(::operator new(sizeof(T) * BLOCK_CAPACITY, std::align_val_t{alignof(T)}));
+            data = static_cast<T*>(::operator new(
+                sizeof(T) * BLOCK_CAPACITY, std::align_val_t{alignof(T)}));
             skipfield[0] = BLOCK_CAPACITY;
             skipfield[BLOCK_CAPACITY - 1] = BLOCK_CAPACITY;
             first_free_idx = 0;
@@ -41,12 +42,9 @@ private:
         {
             if (active_count > 0)
             {
-                for (size_t i = 0; i < BLOCK_CAPACITY; ++i)
+                for (size_type i = 0; i < BLOCK_CAPACITY; ++i)
                 {
-                    if (skipfield[i] == 0)
-                    {
-                        data[i].~T();
-                    }
+                    if (skipfield[i] == 0) { data[i].~T(); }
                     else
                     {
                         i += skipfield[i] - 1;
@@ -56,29 +54,29 @@ private:
             ::operator delete(data, std::align_val_t{alignof(T)});
         }
 
-
         template <typename... Args>
-        T* emplace_at(size_t idx, Args&&... args)
+        T* emplace_at(size_type idx, Args&&... args)
         {
             assert(idx < BLOCK_CAPACITY && "idx不能越界");
             assert(skipfield[idx] && "idx必须是空洞的起点");
 
             // 在指定的空闲 idx 上执行 Placement new
-            T* ptr = ::new (static_cast<void*>(&data[idx])) T(std::forward<Args>(args)...);
+            T* ptr = ::new (static_cast<void*>(&data[idx]))
+                T(std::forward<Args>(args)...);
 
             // 维护 block 内部状态与 Skipfield
             ++active_count;
-            if(skipfield[idx] != 1) //当前空洞还有
+            if (skipfield[idx] != 1) // 当前空洞还有
             {
                 skipfield[idx + skipfield[idx] - 1] = skipfield[idx] - 1;
                 skipfield[idx + 1] = skipfield[idx] - 1;
-                if(first_free_idx == idx) { ++first_free_idx; }
+                if (first_free_idx == idx) { ++first_free_idx; }
             }
-            else if(active_count < BLOCK_CAPACITY)
+            else if (active_count < BLOCK_CAPACITY)
             {
-                for(size_t i = idx + 1; i < BLOCK_CAPACITY; ++i)
+                for (size_type i = idx + 1; i < BLOCK_CAPACITY; ++i)
                 {
-                    if(skipfield[i] != 0)
+                    if (skipfield[i] != 0)
                     {
                         first_free_idx = i;
                         break;
@@ -90,55 +88,52 @@ private:
             return ptr;
         }
 
-    T* erase_at(size_t idx)
-    {
-        assert(this != nullptr && "blk 不能为空");
-        assert(idx < BLOCK_CAPACITY && "idx 不能越界");
-        assert(this->skipfield[idx] == 0 && "不能删除不存在的元素");
-
-        // 显式销毁对象
-        this->data[idx].~T();
-
-        // 探查左右两侧空洞长度（0 表示邻居有数据或已到边界）
-        const size_t left_len  = (idx != 0) ? this->skipfield[idx - 1] : 0;
-        const size_t right_len = (idx != BLOCK_CAPACITY - 1) ? this->skipfield[idx + 1] : 0;
-
-        // 计算合并后的完整空洞长度
-        const size_t total_len = left_len + 1 + right_len;
-
-        // 定位合并后区间的左右边界
-        const size_t left_boundary  = idx - left_len;
-        const size_t right_boundary = idx + right_len;
-
-        // 仅更新两端哨兵
-        this->skipfield[left_boundary]  = total_len;
-        this->skipfield[right_boundary] = total_len;
-
-        // 维护块状态
-        --this->active_count;
-
-        // 更新首个空闲槽位索引
-        if (idx < this->first_free_idx)
+        T* erase_at(size_type idx)
         {
-            this->first_free_idx = idx;
+            assert(this != nullptr && "blk 不能为空");
+            assert(idx < BLOCK_CAPACITY && "idx 不能越界");
+            assert(this->skipfield[idx] == 0 && "不能删除不存在的元素");
+
+            // 显式销毁对象
+            this->data[idx].~T();
+
+            // 探查左右两侧空洞长度（0 表示邻居有数据或已到边界）
+            const size_type left_len =
+                (idx != 0) ? this->skipfield[idx - 1] : 0;
+            const size_type right_len =
+                (idx != BLOCK_CAPACITY - 1) ? this->skipfield[idx + 1] : 0;
+
+            // 计算合并后的完整空洞长度
+            const size_type total_len = left_len + 1 + right_len;
+
+            // 定位合并后区间的左右边界
+            const size_type left_boundary = idx - left_len;
+            const size_type right_boundary = idx + right_len;
+
+            // 仅更新两端哨兵
+            this->skipfield[left_boundary] = total_len;
+            this->skipfield[right_boundary] = total_len;
+
+            // 维护块状态
+            --this->active_count;
+
+            // 更新首个空闲槽位索引
+            if (idx < this->first_free_idx) { this->first_free_idx = idx; }
+
+            return &this->data[idx];
         }
-
-        return &this->data[idx];
-    }
-
     };
     block* head_block_{nullptr};
     block* tail_block_{nullptr};
 
-
-public:
+  public:
     hive() = default;
 
     hive(const hive& other)
     {
         hive temp;
 
-        for(auto it = other.begin(); it != other.end(); ++it)
+        for (auto it = other.begin(); it != other.end(); ++it)
         {
             temp.emplace(*it);
         }
@@ -148,7 +143,7 @@ public:
 
     hive& operator=(const hive& other)
     {
-        if(this != &other)
+        if (this != &other)
         {
             hive temp(other);
             swap(temp);
@@ -163,14 +158,16 @@ public:
         std::swap(size_, other.size_);
     }
 
-    hive(hive&& other) noexcept :
-        size_(std::exchange(other.size_, 0)),
-        head_block_(std::exchange(other.head_block_, nullptr)),
-        tail_block_(std::exchange(other.tail_block_, nullptr)) {}
+    hive(hive&& other) noexcept
+        : size_(std::exchange(other.size_, 0)),
+          head_block_(std::exchange(other.head_block_, nullptr)),
+          tail_block_(std::exchange(other.tail_block_, nullptr))
+    {
+    }
 
     hive& operator=(hive&& other) noexcept
     {
-        if(this != &other)
+        if (this != &other)
         {
             clear();
             size_ = std::exchange(other.size_, 0);
@@ -180,15 +177,12 @@ public:
         return *this;
     }
 
-    ~hive()
-    {
-        clear();
-    }
+    ~hive() { clear(); }
 
     void clear() noexcept
     {
         block* curr = head_block_;
-        while(curr != nullptr)
+        while (curr != nullptr)
         {
             block* next = curr->next;
             delete curr;
@@ -198,7 +192,7 @@ public:
         size_ = 0;
     }
 
-    [[nodiscard]] size_t size () const noexcept { return size_; }
+    [[nodiscard]] size_type size() const noexcept { return size_; }
 
     [[nodiscard]] bool empty() const noexcept { return size_ == 0; }
 
@@ -206,50 +200,47 @@ public:
     {
         friend class hive;
 
-    public:
-
+      public:
         // 标准迭代器特征类型别名
-        using value_type        = T;
-        using reference         = T&;
-        using pointer           = T*;
-        using difference_type   = std::ptrdiff_t;
+        using value_type = T;
+        using reference = T&;
+        using pointer = T*;
+        using difference_type = std::ptrdiff_t;
         using iterator_category = std::bidirectional_iterator_tag;
-
 
         // 构造函数
         iterator() noexcept : curr_block_(nullptr), index_(0) {}
-        iterator(block* b, size_t index) noexcept : curr_block_(b), index_(index) {}
+        iterator(block* b, size_type index) noexcept
+            : curr_block_(b), index_(index)
+        {
+        }
 
         // 访问操作符
         [[nodiscard]] reference operator*() const noexcept
-        {
-            return curr_block_->data[index_];
-        }
+        { return curr_block_->data[index_]; }
 
         [[nodiscard]] pointer operator->() const noexcept
-        {
-            return &curr_block_->data[index_];
-        }
+        { return &curr_block_->data[index_]; }
 
         // 移动操作符
-        iterator& operator++() noexcept     // 前置 ++
+        iterator& operator++() noexcept // 前置 ++
         {
             advance_to_next();
             return *this;
         }
-        iterator operator++(int) noexcept   // 后置 ++
+        iterator operator++(int) noexcept // 后置 ++
         {
             iterator temp = *this;
             ++(*this);
             return temp;
         }
 
-        iterator& operator--() noexcept       // 前置 --
+        iterator& operator--() noexcept // 前置 --
         {
             retreat_to_prev();
             return *this;
         }
-        iterator operator--(int) noexcept    // 后置 --
+        iterator operator--(int) noexcept // 后置 --
         {
             iterator temp = *this;
             --(*this);
@@ -259,16 +250,18 @@ public:
         // 比较操作符
         [[nodiscard]] bool operator==(const iterator& other) const noexcept
         {
-            return this->curr_block_ == other.curr_block_ && this->index_ == other.index_;
+            return this->curr_block_ == other.curr_block_ &&
+                   this->index_ == other.index_;
         }
         [[nodiscard]] bool operator!=(const iterator& other) const noexcept
         {
-            return !(this->curr_block_ == other.curr_block_ && this->index_ == other.index_);
+            return !(this->curr_block_ == other.curr_block_ &&
+                     this->index_ == other.index_);
         }
 
-    private:
+      private:
         block* curr_block_{nullptr}; // 当前指向的内存块
-        size_t index_{0};            // 当前在块内的槽位下标
+        size_type index_{0};         // 当前在块内的槽位下标
 
         void advance_to_next() noexcept // 向后扫描/跳跃到下一个存在元素的槽位
         {
@@ -276,7 +269,8 @@ public:
             ++index_;
             while (curr_block_ != nullptr)
             {
-                while(index_ < BLOCK_CAPACITY && curr_block_->skipfield[index_] > 0)
+                while (index_ < BLOCK_CAPACITY &&
+                       curr_block_->skipfield[index_] > 0)
                 {
                     index_ += curr_block_->skipfield[index_];
                 }
@@ -304,23 +298,26 @@ public:
                 curr_block_ = curr_block_->prev;
                 index_ = BLOCK_CAPACITY - 1;
             }
-            else { --index_; }
+            else
+            {
+                --index_;
+            }
 
             while (curr_block_ != nullptr)
             {
-                while (index_ < BLOCK_CAPACITY && curr_block_->skipfield[index_] > 0)
+                while (index_ < BLOCK_CAPACITY &&
+                       curr_block_->skipfield[index_] > 0)
                 {
                     skip_t len = curr_block_->skipfield[index_];
-                    if (index_ < len) {
+                    if (index_ < len)
+                    {
                         index_ = 0;
                         break;
                     }
                     index_ -= len;
                 }
 
-                if (curr_block_->skipfield[index_] == 0) {
-                    return;
-                }
+                if (curr_block_->skipfield[index_] == 0) { return; }
                 curr_block_ = curr_block_->prev;
                 index_ = BLOCK_CAPACITY - 1;
             }
@@ -331,55 +328,49 @@ public:
     {
         friend class hive;
 
-    public:
-
+      public:
         // 标准迭代器特征类型别名
-        using value_type        = T;
-        using reference         = const T&;
-        using pointer           = const T*;
-        using difference_type   = std::ptrdiff_t;
+        using value_type = T;
+        using reference = const T&;
+        using pointer = const T*;
+        using difference_type = std::ptrdiff_t;
         using iterator_category = std::bidirectional_iterator_tag;
-
 
         // 构造函数
         const_iterator() noexcept = default;
 
         const_iterator(const iterator& it) noexcept : it_(it) {}
 
-        const_iterator(block* b, size_t index) noexcept : it_(b, index) {}
+        const_iterator(block* b, size_type index) noexcept : it_(b, index) {}
 
         // 访问操作符
         [[nodiscard]] reference operator*() const noexcept
-        {
-            return static_cast<const T&>(*it_);
-        }
+        { return static_cast<const T&>(*it_); }
 
         [[nodiscard]] pointer operator->() const noexcept
-        {
-            return static_cast<const T*>(it_.operator->());
-        }
+        { return static_cast<const T*>(it_.operator->()); }
 
         // 移动操作符
-        const_iterator& operator++() noexcept     // 前置 ++
+        const_iterator& operator++() noexcept // 前置 ++
         {
             ++it_;
             return *this;
         }
 
-        const_iterator  operator++(int) noexcept   // 后置 ++
+        const_iterator operator++(int) noexcept // 后置 ++
         {
             const_iterator temp = static_cast<const_iterator>(it_);
             ++it_;
             return temp;
         }
 
-        const_iterator& operator--() noexcept       // 前置 --
+        const_iterator& operator--() noexcept // 前置 --
         {
             --it_;
             return *this;
         }
 
-        const_iterator  operator--(int) noexcept    // 后置 --
+        const_iterator operator--(int) noexcept // 后置 --
         {
             const_iterator temp = static_cast<const_iterator>(it_);
             --it_;
@@ -387,42 +378,34 @@ public:
         }
 
         // 比较操作符
-        [[nodiscard]] bool operator==(const const_iterator& other) const noexcept
-        {
-            return it_ == other.it_;
-        }
-        [[nodiscard]] bool operator!=(const const_iterator& other) const noexcept
-        {
-            return it_ != other.it_;
-        }
+        [[nodiscard]] bool
+        operator==(const const_iterator& other) const noexcept
+        { return it_ == other.it_; }
+        [[nodiscard]] bool
+        operator!=(const const_iterator& other) const noexcept
+        { return it_ != other.it_; }
 
-    private:
+      private:
         iterator it_;
     };
 
-public:
-
+  public:
     [[nodiscard]] iterator begin() noexcept
     {
         if (head_block_ == nullptr) { return end(); }
 
         iterator it(head_block_, 0);
-        if (head_block_->skipfield[0] > 0) {
+        if (head_block_->skipfield[0] > 0)
+        {
             it.index_ = head_block_->skipfield[0];
-            if (it.index_ >= BLOCK_CAPACITY)
-            {
-                it.advance_to_next();
-            }
+            if (it.index_ >= BLOCK_CAPACITY) { it.advance_to_next(); }
         }
         return it;
     }
 
     [[nodiscard]] iterator end() noexcept
     {
-        if (tail_block_ == nullptr)
-        {
-            return iterator(nullptr, 0);
-        }
+        if (tail_block_ == nullptr) { return iterator(nullptr, 0); }
         return iterator(tail_block_, BLOCK_CAPACITY);
     }
 
@@ -430,14 +413,17 @@ public:
     iterator emplace(Args&&... args)
     {
         auto [curr, idx] = find_slot_location();
-        if(curr == nullptr)
+        if (curr == nullptr)
         {
             auto new_block_ = std::make_unique<block>(tail_block_, nullptr);
             new_block_->emplace_at(0, std::forward<Args>(args)...);
             curr = new_block_.release();
             idx = 0;
-            if(tail_block_ != nullptr) { tail_block_->next = curr; }
-            else { head_block_ = curr; }
+            if (tail_block_ != nullptr) { tail_block_->next = curr; }
+            else
+            {
+                head_block_ = curr;
+            }
             tail_block_ = curr;
         }
         else
@@ -449,39 +435,31 @@ public:
         return iterator(curr, idx);
     }
 
-    iterator insert(const T& value)
-    {
-        return emplace(value);
-    }
+    iterator insert(const T& value) { return emplace(value); }
 
-    iterator insert(T&& value)
-    {
-        return emplace(std::move(value));
-    }
+    iterator insert(T&& value) { return emplace(std::move(value)); }
 
     iterator erase(iterator it)
     {
         block* blk = it.curr_block_;
-        size_t idx = it.index_;
+        size_type idx = it.index_;
 
         assert(blk != nullptr && idx < BLOCK_CAPACITY);
         assert(blk->skipfield[idx] == 0 && "不能删除不存在的元素");
 
         // 记录右侧原有的空洞长度 R
-        const size_t right_len = (idx != BLOCK_CAPACITY - 1) ? blk->skipfield[idx + 1] : 0;
+        const size_type right_len =
+            (idx != BLOCK_CAPACITY - 1) ? blk->skipfield[idx + 1] : 0;
 
         // 析构并合并 skipfield
         blk->erase_at(idx);
         --size_;
 
         // 下一个有效位置就在当前 idx 跨过右侧空洞之后的第一位
-        size_t next_idx = idx + right_len + 1;
+        size_type next_idx = idx + right_len + 1;
 
         // 如果还在当前 block 内，next_idx 必定是下一个存活元素
-        if (next_idx < BLOCK_CAPACITY)
-        {
-            return iterator(blk, next_idx);
-        }
+        if (next_idx < BLOCK_CAPACITY) { return iterator(blk, next_idx); }
 
         // 超出当前 block，寻找下一个有存活元素的 block
         block* next_blk = blk->next;
@@ -490,14 +468,12 @@ public:
             next_blk = next_blk->next;
         }
 
-        if (next_blk == nullptr)
-        {
-            return end();
-        }
+        if (next_blk == nullptr) { return end(); }
 
         // 定位到下一个 block 的首个有效元素（跳过开头的空洞）
-        size_t first_valid = 0;
-        while (first_valid < BLOCK_CAPACITY && next_blk->skipfield[first_valid] > 0)
+        size_type first_valid = 0;
+        while (first_valid < BLOCK_CAPACITY &&
+               next_blk->skipfield[first_valid] > 0)
         {
             first_valid += next_blk->skipfield[first_valid];
         }
@@ -505,51 +481,51 @@ public:
         return iterator(next_blk, first_valid);
     }
 
-    [[nodiscard]] const_iterator begin() const noexcept
+    iterator erase(iterator it_begin, iterator it_end)
     {
-        return cbegin();
+        auto it = it_begin;
+        while (it != it_end)
+        {
+            it = erase(it);
+        }
+        return it;
     }
 
-    [[nodiscard]] const_iterator end() const noexcept
-    {
-        return cend();
-    }
+    [[nodiscard]] const_iterator begin() const noexcept { return cbegin(); }
+
+    [[nodiscard]] const_iterator end() const noexcept { return cend(); }
 
     [[nodiscard]] const_iterator cbegin() const noexcept
     {
         if (head_block_ == nullptr) { return cend(); }
 
         iterator it(head_block_, 0);
-        if (head_block_->skipfield[0] > 0) {
+        if (head_block_->skipfield[0] > 0)
+        {
             it.index_ = head_block_->skipfield[0];
-            if (it.index_ >= BLOCK_CAPACITY)
-            {
-                it.advance_to_next();
-            }
+            if (it.index_ >= BLOCK_CAPACITY) { it.advance_to_next(); }
         }
         return static_cast<const_iterator>(it);
     }
 
     [[nodiscard]] const_iterator cend() const noexcept
     {
-        if (tail_block_ == nullptr)
-        {
-            return const_iterator(nullptr, 0);
-        }
+        if (tail_block_ == nullptr) { return const_iterator(nullptr, 0); }
         return const_iterator(tail_block_, BLOCK_CAPACITY);
     }
 
     struct slot_location
     {
         block* blk{nullptr};
-        size_t idx{0};
+        size_type idx{0};
     };
 
-    [[nodiscard]]slot_location find_slot_location () const noexcept
+    [[nodiscard]] slot_location find_slot_location() const noexcept
     {
         block* curr = head_block_;
-        while(curr != nullptr && curr->active_count == BLOCK_CAPACITY) curr = curr->next;
-        if(curr == nullptr) { return {nullptr, 0}; }
-        return { curr, curr->first_free_idx };
+        while (curr != nullptr && curr->active_count == BLOCK_CAPACITY)
+            curr = curr->next;
+        if (curr == nullptr) { return {nullptr, 0}; }
+        return {curr, curr->first_free_idx};
     }
 };

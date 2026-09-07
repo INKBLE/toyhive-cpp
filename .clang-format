@@ -1,0 +1,18 @@
+BasedOnStyle: LLVM
+BreakBeforeBraces: Allman
+IndentWidth: 4
+
+# 函数体为空或只有一行语句时，允许缩在单行花括号内
+AllowShortFunctionsOnASingleLine: All
+
+# 允许短控制块（如单独的 { ... }）保持单行
+AllowShortBlocksOnASingleLine: Always
+
+# 允许 if 和 else 都各自保持在单行
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+
+# 模板声明强制换行
+BreakTemplateDeclarations: Yes
+
+# 指针星号靠左贴类型 (T* ptr)
+PointerAlignment: Left

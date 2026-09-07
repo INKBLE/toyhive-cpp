@@ -62,7 +62,10 @@ for test_name in \
     right_hole_merge \
     bidirectional_hole_merge \
     alternating_holes_bidirectional_iteration \
-    erase_entire_middle_block_and_cross_it; do
+    erase_entire_middle_block_and_cross_it \
+    erase_range_within_block \
+    erase_range_across_blocks_and_existing_holes \
+    erase_range_to_end_and_empty_range; do
     echo "=== ${test_name} ==="
     if ! ASAN_OPTIONS="detect_leaks=1:halt_on_error=0" \
         UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=1" \
