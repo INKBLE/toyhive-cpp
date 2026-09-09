@@ -12,7 +12,7 @@ AllowShortBlocksOnASingleLine: Always
 AllowShortIfStatementsOnASingleLine: AllIfsAndElse
 
 # 模板声明强制换行
-BreakTemplateDeclarations: Yes
+AlwaysBreakTemplateDeclarations: true
 
 # 指针星号靠左贴类型 (T* ptr)
 PointerAlignment: Left

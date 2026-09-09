@@ -36,7 +36,9 @@ struct throwing_value
     int value;
 
     static void reset(int allowed_constructions)
-    { successful_constructions_before_throw = allowed_constructions; }
+    {
+        successful_constructions_before_throw = allowed_constructions;
+    }
 
     static void maybe_throw()
     {
@@ -60,7 +62,9 @@ struct throwing_value
     }
 
     throwing_value(throwing_value&& other) noexcept : value(other.value)
-    { ++live_count; }
+    {
+        ++live_count;
+    }
 
     ~throwing_value() { --live_count; }
 };

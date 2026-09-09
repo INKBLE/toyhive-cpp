@@ -28,15 +28,13 @@ static_assert(noexcept(std::declval<const hive_type&>().begin()));
 static_assert(noexcept(std::declval<const hive_type&>().end()));
 static_assert(noexcept(std::declval<const hive_type&>().cbegin()));
 static_assert(noexcept(std::declval<const hive_type&>().cend()));
-static_assert(std::is_same_v<
-              decltype(std::declval<hive_type&>().erase(
-                  std::declval<hive_type::iterator>())),
-              hive_type::iterator>);
-static_assert(std::is_same_v<
-              decltype(std::declval<hive_type&>().erase(
-                  std::declval<hive_type::iterator>(),
-                  std::declval<hive_type::iterator>())),
-              hive_type::iterator>);
+static_assert(std::is_same_v<decltype(std::declval<hive_type&>().erase(
+                                 std::declval<hive_type::iterator>())),
+                             hive_type::iterator>);
+static_assert(std::is_same_v<decltype(std::declval<hive_type&>().erase(
+                                 std::declval<hive_type::iterator>(),
+                                 std::declval<hive_type::iterator>())),
+                             hive_type::iterator>);
 
 int main()
 {

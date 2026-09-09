@@ -25,7 +25,7 @@ class hive
         block* next{nullptr};
         T* data{nullptr};
         size_type active_count{0}; // 记录元素数量
-        skip_t first_free_idx{0};  // 记录当前块内已知的第一个可用空洞起点
+        skip_t first_free_idx{0}; // 记录当前块内已知的第一个可用空洞起点
         skip_t skipfield[BLOCK_CAPACITY]{0};
 
         explicit block(block* prev = nullptr, block* next = nullptr)
@@ -45,10 +45,7 @@ class hive
                 for (size_type i = 0; i < BLOCK_CAPACITY; ++i)
                 {
                     if (skipfield[i] == 0) { data[i].~T(); }
-                    else
-                    {
-                        i += skipfield[i] - 1;
-                    }
+                    else { i += skipfield[i] - 1; }
                 }
             }
             ::operator delete(data, std::align_val_t{alignof(T)});
@@ -217,10 +214,14 @@ class hive
 
         // 访问操作符
         [[nodiscard]] reference operator*() const noexcept
-        { return curr_block_->data[index_]; }
+        {
+            return curr_block_->data[index_];
+        }
 
         [[nodiscard]] pointer operator->() const noexcept
-        { return &curr_block_->data[index_]; }
+        {
+            return &curr_block_->data[index_];
+        }
 
         // 移动操作符
         iterator& operator++() noexcept // 前置 ++
@@ -298,10 +299,7 @@ class hive
                 curr_block_ = curr_block_->prev;
                 index_ = BLOCK_CAPACITY - 1;
             }
-            else
-            {
-                --index_;
-            }
+            else { --index_; }
 
             while (curr_block_ != nullptr)
             {
@@ -345,10 +343,14 @@ class hive
 
         // 访问操作符
         [[nodiscard]] reference operator*() const noexcept
-        { return static_cast<const T&>(*it_); }
+        {
+            return static_cast<const T&>(*it_);
+        }
 
         [[nodiscard]] pointer operator->() const noexcept
-        { return static_cast<const T*>(it_.operator->()); }
+        {
+            return static_cast<const T*>(it_.operator->());
+        }
 
         // 移动操作符
         const_iterator& operator++() noexcept // 前置 ++
@@ -380,10 +382,14 @@ class hive
         // 比较操作符
         [[nodiscard]] bool
         operator==(const const_iterator& other) const noexcept
-        { return it_ == other.it_; }
+        {
+            return it_ == other.it_;
+        }
         [[nodiscard]] bool
         operator!=(const const_iterator& other) const noexcept
-        { return it_ != other.it_; }
+        {
+            return it_ != other.it_;
+        }
 
       private:
         iterator it_;
@@ -420,16 +426,10 @@ class hive
             curr = new_block_.release();
             idx = 0;
             if (tail_block_ != nullptr) { tail_block_->next = curr; }
-            else
-            {
-                head_block_ = curr;
-            }
+            else { head_block_ = curr; }
             tail_block_ = curr;
         }
-        else
-        {
-            curr->emplace_at(idx, std::forward<Args>(args)...);
-        }
+        else { curr->emplace_at(idx, std::forward<Args>(args)...); }
 
         ++size_;
         return iterator(curr, idx);

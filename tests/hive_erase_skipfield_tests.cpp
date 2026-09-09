@@ -9,27 +9,32 @@
 #include <string_view>
 #include <vector>
 
-namespace {
+namespace
+{
 
-class test_failure final : public std::runtime_error {
-public:
+class test_failure final : public std::runtime_error
+{
+  public:
     explicit test_failure(const char* message) : std::runtime_error(message) {}
 };
 
 #define TOYHIVE_STRINGIFY_IMPL(value) #value
 #define TOYHIVE_STRINGIFY(value) TOYHIVE_STRINGIFY_IMPL(value)
-#define CHECK(condition)                                                                         \
-    do {                                                                                         \
-        if (!(condition)) {                                                                      \
-            throw test_failure("CHECK failed: " #condition " (" __FILE__ ":"                 \
-                               TOYHIVE_STRINGIFY(__LINE__) ")");                              \
-        }                                                                                        \
+#define CHECK(condition)                                                       \
+    do                                                                         \
+    {                                                                          \
+        if (!(condition))                                                      \
+        {                                                                      \
+            throw test_failure("CHECK failed: " #condition " (" __FILE__       \
+                               ":" TOYHIVE_STRINGIFY(__LINE__) ")");           \
+        }                                                                      \
     } while (false)
 
 std::vector<int> forward_values(hive<int>& values)
 {
     std::vector<int> result;
-    for (auto it = values.begin(); it != values.end(); ++it) {
+    for (auto it = values.begin(); it != values.end(); ++it)
+    {
         result.push_back(*it);
     }
     return result;
@@ -38,7 +43,8 @@ std::vector<int> forward_values(hive<int>& values)
 std::vector<int> reverse_values(hive<int>& values)
 {
     std::vector<int> result;
-    for (auto it = values.end(); it != values.begin();) {
+    for (auto it = values.end(); it != values.begin();)
+    {
         --it;
         result.push_back(*it);
     }
@@ -48,7 +54,8 @@ std::vector<int> reverse_values(hive<int>& values)
 auto find_value(hive<int>& values, int value)
 {
     auto it = values.begin();
-    while (it != values.end() && *it != value) {
+    while (it != values.end() && *it != value)
+    {
         ++it;
     }
     CHECK(it != values.end());
@@ -68,9 +75,9 @@ void check_state(hive<int>& values, const std::vector<int>& expected)
 void erase_and_expect_next(hive<int>& values, int erased, int next)
 {
     const auto returned = values.erase(find_value(values, erased));
-    if (next < 0) {
-        CHECK(returned == values.end());
-    } else {
+    if (next < 0) { CHECK(returned == values.end()); }
+    else
+    {
         CHECK(returned != values.end());
         CHECK(*returned == next);
     }
@@ -79,7 +86,8 @@ void erase_and_expect_next(hive<int>& values, int erased, int next)
 void single_hole_merge_and_erase_return()
 {
     hive<int> values;
-    for (int value : {10, 20, 30}) {
+    for (int value : {10, 20, 30})
+    {
         values.emplace(value);
     }
 
@@ -91,7 +99,8 @@ void single_hole_merge_and_erase_return()
 void left_hole_merge()
 {
     hive<int> values;
-    for (int value : {10, 20, 30, 40}) {
+    for (int value : {10, 20, 30, 40})
+    {
         values.emplace(value);
     }
 
@@ -104,7 +113,8 @@ void left_hole_merge()
 void right_hole_merge()
 {
     hive<int> values;
-    for (int value : {10, 20, 30, 40}) {
+    for (int value : {10, 20, 30, 40})
+    {
         values.emplace(value);
     }
 
@@ -117,7 +127,8 @@ void right_hole_merge()
 void bidirectional_hole_merge()
 {
     hive<int> values;
-    for (int value : {10, 20, 30, 40, 50}) {
+    for (int value : {10, 20, 30, 40, 50})
+    {
         values.emplace(value);
     }
 
@@ -132,12 +143,14 @@ void alternating_holes_bidirectional_iteration()
 {
     hive<int> values;
     std::vector<int> expected;
-    for (int value = 0; value < 130; ++value) {
+    for (int value = 0; value < 130; ++value)
+    {
         values.emplace(value);
         expected.push_back(value);
     }
 
-    for (int value = 1; value < 130; value += 2) {
+    for (int value = 1; value < 130; value += 2)
+    {
         erase_and_expect_next(values, value, value + 1 < 130 ? value + 1 : -1);
         expected.erase(std::find(expected.begin(), expected.end(), value));
     }
@@ -149,13 +162,15 @@ void erase_entire_middle_block_and_cross_it()
 {
     hive<int> values;
     std::vector<int> expected;
-    for (int value = 0; value < 192; ++value) {
+    for (int value = 0; value < 192; ++value)
+    {
         values.emplace(value);
         expected.push_back(value);
     }
 
     // 删除第二个完整 block（槽位 64..127），留下首尾两个 block。
-    for (int value = 64; value < 128; ++value) {
+    for (int value = 64; value < 128; ++value)
+    {
         erase_and_expect_next(values, value, value == 127 ? 128 : value + 1);
         expected.erase(std::find(expected.begin(), expected.end(), value));
     }
@@ -175,7 +190,8 @@ void erase_entire_middle_block_and_cross_it()
 void erase_range_within_block()
 {
     hive<int> values;
-    for (int value = 0; value < 10; ++value) {
+    for (int value = 0; value < 10; ++value)
+    {
         values.emplace(value);
     }
 
@@ -191,7 +207,8 @@ void erase_range_within_block()
 void erase_range_across_blocks_and_existing_holes()
 {
     hive<int> values;
-    for (int value = 0; value < 130; ++value) {
+    for (int value = 0; value < 130; ++value)
+    {
         values.emplace(value);
     }
 
@@ -206,10 +223,9 @@ void erase_range_across_blocks_and_existing_holes()
     CHECK(*returned == 70);
 
     std::vector<int> expected;
-    for (int value = 0; value < 130; ++value) {
-        if (value < 60 || value >= 70) {
-            expected.push_back(value);
-        }
+    for (int value = 0; value < 130; ++value)
+    {
+        if (value < 60 || value >= 70) { expected.push_back(value); }
     }
     check_state(values, expected);
 }
@@ -217,7 +233,8 @@ void erase_range_across_blocks_and_existing_holes()
 void erase_range_to_end_and_empty_range()
 {
     hive<int> values;
-    for (int value = 0; value < 130; ++value) {
+    for (int value = 0; value < 130; ++value)
+    {
         values.emplace(value);
     }
 
@@ -226,7 +243,8 @@ void erase_range_to_end_and_empty_range()
     CHECK(returned == values.end());
 
     std::vector<int> expected;
-    for (int value = 0; value < 64; ++value) {
+    for (int value = 0; value < 64; ++value)
+    {
         expected.push_back(value);
     }
     check_state(values, expected);
@@ -236,7 +254,8 @@ void erase_range_to_end_and_empty_range()
     check_state(values, expected);
 }
 
-struct test_case {
+struct test_case
+{
     std::string_view name;
     void (*run)();
 };
@@ -246,10 +265,13 @@ constexpr test_case tests[] = {
     {"left_hole_merge", left_hole_merge},
     {"right_hole_merge", right_hole_merge},
     {"bidirectional_hole_merge", bidirectional_hole_merge},
-    {"alternating_holes_bidirectional_iteration", alternating_holes_bidirectional_iteration},
-    {"erase_entire_middle_block_and_cross_it", erase_entire_middle_block_and_cross_it},
+    {"alternating_holes_bidirectional_iteration",
+     alternating_holes_bidirectional_iteration},
+    {"erase_entire_middle_block_and_cross_it",
+     erase_entire_middle_block_and_cross_it},
     {"erase_range_within_block", erase_range_within_block},
-    {"erase_range_across_blocks_and_existing_holes", erase_range_across_blocks_and_existing_holes},
+    {"erase_range_across_blocks_and_existing_holes",
+     erase_range_across_blocks_and_existing_holes},
     {"erase_range_to_end_and_empty_range", erase_range_to_end_and_empty_range},
 };
 
@@ -260,22 +282,25 @@ int main(int argc, char* argv[])
     bool success = true;
     bool found = argc != 2;
 
-    for (const test_case& test : tests) {
-        if (argc == 2 && test.name != argv[1]) {
-            continue;
-        }
+    for (const test_case& test : tests)
+    {
+        if (argc == 2 && test.name != argv[1]) { continue; }
         found = true;
 
-        try {
+        try
+        {
             test.run();
             std::cout << "[PASS] " << test.name << '\n';
-        } catch (const std::exception& error) {
+        }
+        catch (const std::exception& error)
+        {
             success = false;
             std::cerr << "[FAIL] " << test.name << ": " << error.what() << '\n';
         }
     }
 
-    if (!found) {
+    if (!found)
+    {
         std::cerr << "Unknown test: " << argv[1] << '\n';
         return EXIT_FAILURE;
     }
