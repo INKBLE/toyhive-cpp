@@ -28,6 +28,15 @@ static_assert(noexcept(std::declval<const hive_type&>().begin()));
 static_assert(noexcept(std::declval<const hive_type&>().end()));
 static_assert(noexcept(std::declval<const hive_type&>().cbegin()));
 static_assert(noexcept(std::declval<const hive_type&>().cend()));
+static_assert(std::is_same_v<
+              decltype(std::declval<hive_type&>().erase(
+                  std::declval<hive_type::iterator>())),
+              hive_type::iterator>);
+static_assert(std::is_same_v<
+              decltype(std::declval<hive_type&>().erase(
+                  std::declval<hive_type::iterator>(),
+                  std::declval<hive_type::iterator>())),
+              hive_type::iterator>);
 
 int main()
 {
@@ -61,5 +70,13 @@ int main()
     values.erase(it);
 
     hive_type copy(const_values);
-    return copy.size() == 128 ? 0 : 4;
+    if (copy.size() != 128) { return 4; }
+
+    hive_type other;
+    other.emplace(999);
+    // Passing other.begin() to values.erase() violates erase's documented
+    // precondition and is intentionally not executed: its behavior is UB.
+    (void)other;
+
+    return 0;
 }

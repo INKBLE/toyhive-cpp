@@ -14,7 +14,7 @@
 - 支持 `erase(iterator)`：销毁指定元素、合并相邻空洞，并返回下一个存活元素的迭代器或 `end()`。
 - 提供 `size()`、`empty()`、`begin()`、`end()`，以及可前后遍历空洞和空块的双向 `iterator`。
 - 容器和块销毁时会析构所有仍存活的元素并释放块内存；块分配使用 `alignof(T)`，支持过对齐元素类型。
-- 提供 CTest 边界、生命周期、擦除/skipfield、复制/移动和异常安全测试及 AddressSanitizer、UndefinedBehaviorSanitizer 覆盖脚本。
+- 提供 CTest 边界、生命周期、擦除/skipfield、复制/移动、异常安全和公开 API 检查，以及 AddressSanitizer、UndefinedBehaviorSanitizer 覆盖脚本。
 - [`main.cpp`](main.cpp) 是最小可运行示例。
 
 ## 构建与运行
@@ -75,7 +75,7 @@ for (int value : values) {
 - 复制操作要求 `T` 可复制构造；移动操作按块转移存储，不移动单个元素。
 - 已提供 `iterator`、`const_iterator` 以及 `begin()`、`end()`、`cbegin()` 和 `cend()`；const 容器和 const 迭代器只能读取元素，不能通过迭代器修改元素。
 - 尚未提供分配器支持或完整的标准容器接口；当前提供的 `clear()` 用于清空全部元素和块。
-- 迭代器失效规则、`erase` 的使用前提和异常安全保证见下文；对 `end()`、空迭代器或不属于该容器/不指向存活元素的迭代器调用 `erase` 均不受支持。
+- 迭代器失效规则、`erase` 的使用前提和异常安全保证见下文；对 `end()`、空迭代器、失效迭代器、不属于该容器或不指向存活元素的迭代器调用 `erase`，行为均未定义。
 
 这些限制是该项目后续完善的重点。
 
@@ -102,7 +102,7 @@ for (int value : values) {
 - `swap` 完成后，两边容器原有的 `iterator`、`const_iterator`、指针和引用均视为失效。
 - 容器析构后，与该容器元素或 block 相关的所有迭代器、指针和引用均失效。
 
-失效的迭代器不能再被解引用、递增、递减或传给 `erase`。`erase` 的参数必须是当前容器中指向存活元素的有效 `iterator`；`end()`、默认构造的空迭代器以及其他容器的迭代器都不能传给 `erase`。
+失效的迭代器不能再被解引用、递增、递减或传给 `erase`。`erase` 的参数必须是当前容器中指向存活元素的有效 `iterator`；传入 `end()`、默认构造的空迭代器、其他容器的迭代器，或不指向存活元素的迭代器，行为均未定义（Undefined Behavior，UB）。范围 `erase(first, last)` 还要求两个迭代器属于当前容器，且 `[first, last)` 是可由 `first` 正向遍历至 `last` 的合法范围；否则行为未定义。与标准库容器一致，Release 构建不保证检测这些前置条件违例。
 
 推荐使用重新获取 `end()` 的循环形式处理删除：
 
@@ -121,6 +121,7 @@ for (auto it = values.begin(); it != values.end();) {
 ```text
 .
 ├── CMakeLists.txt  # CMake 构建配置
+├── LICENSE          # MIT 许可证
 ├── hive.hpp        # hive<T> 容器实现
 ├── main.cpp        # 示例程序
 ├── scripts/        # Sanitizer 测试脚本
@@ -130,4 +131,4 @@ for (auto it = values.begin(); it != values.end();) {
 
 ## 许可证
 
-当前仓库尚未声明许可证。在添加许可证文件前，请勿假定可将其用于特定用途。
+本项目采用 [MIT License](LICENSE)。
